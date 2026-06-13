@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todolist.data.database.entity.*
 import com.example.todolist.data.repository.TaskRepository
+import com.example.todolist.utils.AlarmScheduler
+import com.example.todolist.utils.GeofenceHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -12,7 +14,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TaskViewModel @Inject constructor(
-    private val repository: TaskRepository
+    private val repository: TaskRepository,
+    private val alarmScheduler: AlarmScheduler,
+    private val geofenceHelper: GeofenceHelper
 ) : ViewModel() {
 
     // --- Filter state (drives the task list) ---
@@ -74,14 +78,23 @@ class TaskViewModel @Inject constructor(
     // --- CRUD ---
 
     fun saveTask(task: TaskEntity) = viewModelScope.launch {
-        repository.save(task)
+        val id = repository.save(task)
+        val savedTask = task.copy(id = id)
+        alarmScheduler.schedule(savedTask)
+        geofenceHelper.register(savedTask)
     }
 
     fun updateTask(task: TaskEntity) = viewModelScope.launch {
         repository.update(task)
+        alarmScheduler.cancel(task)
+        alarmScheduler.schedule(task)
+        geofenceHelper.remove(task)
+        geofenceHelper.register(task)
     }
 
     fun deleteTask(task: TaskEntity) = viewModelScope.launch {
+        alarmScheduler.cancel(task)
+        geofenceHelper.remove(task)
         repository.delete(task)
     }
 
