@@ -26,8 +26,8 @@ class SettingsViewModel @Inject constructor(
 
     val settings = dataStore.data.map { prefs ->
         AppSettings(
-            darkMode = prefs[KEY_DARK_MODE]               ?: false,
-            notificationsEnabled = prefs[KEY_NOTIFICATIONS_ENABLED]   ?: true,
+            darkMode = prefs[KEY_DARK_MODE] ?: false,
+            notificationsEnabled = prefs[KEY_NOTIFICATIONS_ENABLED] ?: true,
             localizedNotifications = prefs[KEY_LOCALIZED_NOTIFICATIONS] ?: false,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
