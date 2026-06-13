@@ -1,4 +1,13 @@
 package com.example.todolist.ui.settings
 
-class SettingsScreen {
+import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.todolist.viewmodel.SettingsViewModel
+
+@Composable
+fun SettingsScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
+    // TODO: implement UI
 }
