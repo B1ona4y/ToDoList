@@ -4,7 +4,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,18 +19,16 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        val KEY_DARK_MODE           = booleanPreferencesKey("dark_mode")
-        val KEY_NOTIFICATION_SOUND  = booleanPreferencesKey("notification_sound")
-        val KEY_DEFAULT_SORT        = stringPreferencesKey("default_sort")
+        val KEY_DARK_MODE = booleanPreferencesKey("dark_mode")
+        val KEY_NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val KEY_LOCALIZED_NOTIFICATIONS = booleanPreferencesKey("localized_notifications")
     }
 
     val settings = dataStore.data.map { prefs ->
         AppSettings(
-            darkMode          = prefs[KEY_DARK_MODE]          ?: false,
-            notificationSound = prefs[KEY_NOTIFICATION_SOUND] ?: true,
-            defaultSort       = prefs[KEY_DEFAULT_SORT]
-                ?.let { SortOrder.valueOf(it) }
-                ?: SortOrder.BY_PRIORITY
+            darkMode = prefs[KEY_DARK_MODE]               ?: false,
+            notificationsEnabled = prefs[KEY_NOTIFICATIONS_ENABLED]   ?: true,
+            localizedNotifications = prefs[KEY_LOCALIZED_NOTIFICATIONS] ?: false,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
 
@@ -39,17 +36,18 @@ class SettingsViewModel @Inject constructor(
         dataStore.edit { it[KEY_DARK_MODE] = enabled }
     }
 
-    fun setNotificationSound(enabled: Boolean) = viewModelScope.launch {
-        dataStore.edit { it[KEY_NOTIFICATION_SOUND] = enabled }
+    fun setNotificationsEnabled(enabled: Boolean) = viewModelScope.launch {
+        dataStore.edit { it[KEY_NOTIFICATIONS_ENABLED] = enabled }
+        if (!enabled) dataStore.edit { it[KEY_LOCALIZED_NOTIFICATIONS] = false }
     }
 
-    fun setDefaultSort(sort: SortOrder) = viewModelScope.launch {
-        dataStore.edit { it[KEY_DEFAULT_SORT] = sort.name }
+    fun setLocalizedNotifications(enabled: Boolean) = viewModelScope.launch {
+        dataStore.edit { it[KEY_LOCALIZED_NOTIFICATIONS] = enabled }
     }
 }
 
 data class AppSettings(
-    val darkMode: Boolean          = false,
-    val notificationSound: Boolean = true,
-    val defaultSort: SortOrder     = SortOrder.BY_PRIORITY
+    val darkMode: Boolean = false,
+    val notificationsEnabled: Boolean = true,
+    val localizedNotifications: Boolean = false,
 )
