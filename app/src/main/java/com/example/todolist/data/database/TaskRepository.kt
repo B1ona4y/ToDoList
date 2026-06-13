@@ -49,6 +49,9 @@ class TaskRepository @Inject constructor(
     fun getAttachments(taskId: Long): Flow<List<AttachmentEntity>> =
         attachmentDao.getForTask(taskId)
 
+    suspend fun getAttachmentsOnce(taskId: Long): List<AttachmentEntity> =
+        attachmentDao.getForTaskOnce(taskId)
+
     suspend fun addAttachment(attachment: AttachmentEntity): Long =
         attachmentDao.insert(attachment)
 

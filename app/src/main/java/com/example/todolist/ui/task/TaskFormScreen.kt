@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -35,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.todolist.data.database.entity.AttachmentEntity
 import com.example.todolist.data.database.entity.Category
 import com.example.todolist.data.database.entity.Priority
 import com.example.todolist.data.database.entity.RecurrenceType
@@ -70,14 +70,19 @@ fun TaskFormScreen(
     var isRecurring         by rememberSaveable { mutableStateOf(false) }
     var recurrenceType      by remember { mutableStateOf<RecurrenceType?>(null) }
     var recurrenceInterval  by rememberSaveable { mutableIntStateOf(1) }
-    var attachments         by remember { mutableStateOf<List<PendingAttachment>>(emptyList()) }
+    var existingAttachments by remember { mutableStateOf<List<AttachmentEntity>>(emptyList()) }
+    var removedAttachments  by remember { mutableStateOf<List<AttachmentEntity>>(emptyList()) }
+    var newAttachments      by remember { mutableStateOf<List<PendingAttachment>>(emptyList()) }
     var isLoaded            by remember { mutableStateOf(false) }
 
     // --- Load existing task when editing ---
     val currentTask by viewModel.currentTask.collectAsState()
 
     LaunchedEffect(taskId) {
-        taskId?.let { viewModel.loadTask(it) }
+        taskId?.let {
+            viewModel.loadTask(it)
+            existingAttachments = viewModel.getAttachmentsOnce(it)
+        }
     }
 
     LaunchedEffect(currentTask) {
@@ -142,8 +147,8 @@ fun TaskFormScreen(
                                     recurrenceType     = recurrenceType,
                                     recurrenceInterval = recurrenceInterval
                                 )
-                                if (isEditMode) viewModel.updateTask(task)
-                                else viewModel.saveTask(task)
+                                if (isEditMode) viewModel.updateTask(task, newAttachments, removedAttachments)
+                                else viewModel.saveTask(task, newAttachments)
                                 viewModel.clearCurrentTask()
                                 onNavigateBack()
                             }
@@ -244,9 +249,11 @@ fun TaskFormScreen(
 
             FormSection("Attachments") {
                 AttachmentSection(
-                    attachments         = attachments,
-                    onAttachmentsAdded  = { attachments = attachments + it },
-                    onAttachmentRemoved = { attachments = attachments - it }
+                    existingAttachments = existingAttachments.filter { it !in removedAttachments },
+                    pendingAttachments  = newAttachments,
+                    onExistingRemoved   = { removedAttachments = removedAttachments + it },
+                    onPendingAdded      = { newAttachments = newAttachments + it },
+                    onPendingRemoved    = { newAttachments = newAttachments - it }
                 )
             }
 

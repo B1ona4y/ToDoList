@@ -10,6 +10,9 @@ interface AttachmentDao {
     @Query("SELECT * FROM attachments WHERE taskId = :taskId ORDER BY createdAt DESC")
     fun getForTask(taskId: Long): Flow<List<AttachmentEntity>>
 
+    @Query("SELECT * FROM attachments WHERE taskId = :taskId ORDER BY createdAt DESC")
+    suspend fun getForTaskOnce(taskId: Long): List<AttachmentEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(attachment: AttachmentEntity): Long
 

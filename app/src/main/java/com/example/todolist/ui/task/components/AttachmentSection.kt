@@ -3,7 +3,6 @@ package com.example.todolist.ui.task.components
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.todolist.data.database.entity.AttachmentEntity
 
 data class PendingAttachment(
     val uri: Uri,
@@ -38,50 +39,49 @@ data class PendingAttachment(
 
 @Composable
 fun AttachmentSection(
-    attachments: List<PendingAttachment>,
-    onAttachmentsAdded: (List<PendingAttachment>) -> Unit,
-    onAttachmentRemoved: (PendingAttachment) -> Unit,
+    existingAttachments: List<AttachmentEntity>,
+    pendingAttachments: List<PendingAttachment>,
+    onExistingRemoved: (AttachmentEntity) -> Unit,
+    onPendingAdded: (List<PendingAttachment>) -> Unit,
+    onPendingRemoved: (PendingAttachment) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         val pending = uris.map { uri ->
+            val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
             PendingAttachment(
                 uri      = uri,
                 fileName = uri.lastPathSegment ?: "file",
-                mimeType = "application/octet-stream"
+                mimeType = mimeType
             )
         }
-        if (pending.isNotEmpty()) onAttachmentsAdded(pending)
+        if (pending.isNotEmpty()) onPendingAdded(pending)
     }
 
     Column(modifier = modifier) {
-        // Existing attachments
-        attachments.forEach { attachment ->
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                modifier              = Modifier.fillMaxWidth()
-            ) {
-                AssistChip(
-                    onClick   = {},
-                    label     = { Text(attachment.fileName, maxLines = 1) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector       = mimeTypeIcon(attachment.mimeType),
-                            contentDescription = null,
-                            modifier          = Modifier.size(AssistChipDefaults.IconSize)
-                        )
-                    },
-                    modifier  = Modifier.weight(1f)
-                )
-                IconButton(onClick = { onAttachmentRemoved(attachment) }) {
-                    Icon(Icons.Default.Close, contentDescription = "Remove")
-                }
-            }
+        existingAttachments.forEach { attachment ->
+            AttachmentRow(
+                name     = attachment.fileName,
+                mimeType = attachment.mimeType,
+                onRemove = { onExistingRemoved(attachment) }
+            )
         }
 
-        if (attachments.isNotEmpty()) Spacer(Modifier.height(8.dp))
+        pendingAttachments.forEach { attachment ->
+            AttachmentRow(
+                name     = attachment.fileName,
+                mimeType = attachment.mimeType,
+                onRemove = { onPendingRemoved(attachment) }
+            )
+        }
+
+        if (existingAttachments.isNotEmpty() || pendingAttachments.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+        }
 
         OutlinedButton(
             onClick  = { filePicker.launch("*/*") },
@@ -98,6 +98,30 @@ fun AttachmentSection(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun AttachmentRow(name: String, mimeType: String, onRemove: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier          = Modifier.fillMaxWidth()
+    ) {
+        AssistChip(
+            onClick     = {},
+            label       = { Text(name, maxLines = 1) },
+            leadingIcon = {
+                Icon(
+                    imageVector        = mimeTypeIcon(mimeType),
+                    contentDescription = null,
+                    modifier           = Modifier.size(AssistChipDefaults.IconSize)
+                )
+            },
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onRemove) {
+            Icon(Icons.Default.Close, contentDescription = "Remove")
+        }
     }
 }
 
