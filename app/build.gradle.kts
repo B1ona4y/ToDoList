@@ -13,16 +13,12 @@ val localProperties = Properties().apply {
 
 android {
     namespace = "com.example.todolist"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.todolist"
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 34
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
