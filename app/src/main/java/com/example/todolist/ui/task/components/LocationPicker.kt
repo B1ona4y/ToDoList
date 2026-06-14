@@ -34,6 +34,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -145,6 +149,12 @@ private fun MapLocationPicker(
     var selectedName   by remember { mutableStateOf(initialName) }
     var searchQuery    by remember { mutableStateOf(initialName) }
 
+    val mapScrollConsumer = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource) = available
+        }
+    }
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
             selectedLatLng ?: defaultLatLng,
@@ -195,7 +205,8 @@ private fun MapLocationPicker(
         GoogleMap(
             modifier             = Modifier
                 .fillMaxWidth()
-                .height(360.dp),
+                .height(360.dp)
+                .nestedScroll(mapScrollConsumer),
             cameraPositionState  = cameraPositionState,
             onMapClick           = { latLng ->
                 selectedLatLng = latLng
