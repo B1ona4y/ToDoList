@@ -13,7 +13,7 @@ val localProperties = Properties().apply {
 
 android {
     namespace = "com.example.todolist"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.todolist"
