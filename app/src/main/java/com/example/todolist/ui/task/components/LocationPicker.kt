@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -16,16 +18,13 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,12 +33,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -49,7 +46,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationPicker(
     locationName: String,
@@ -59,16 +55,14 @@ fun LocationPicker(
     onLocationCleared: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showDialog by remember { mutableStateOf(false) }
     val hasLocation = latitude != null && longitude != null
 
     Column(modifier = modifier) {
-        // Current location display
         if (hasLocation) {
             Surface(
-                color  = MaterialTheme.colorScheme.secondaryContainer,
-                shape  = MaterialTheme.shapes.medium,
+                color    = MaterialTheme.colorScheme.secondaryContainer,
+                shape    = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -102,7 +96,7 @@ fun LocationPicker(
         }
 
         OutlinedButton(
-            onClick  = { showSheet = true },
+            onClick  = { showDialog = true },
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Map, contentDescription = null)
@@ -111,21 +105,32 @@ fun LocationPicker(
         }
     }
 
-    if (showSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showSheet = false },
-            sheetState       = sheetState
-        ) {
-            MapLocationPicker(
-                initialLat  = latitude,
-                initialLng  = longitude,
-                initialName = locationName,
-                onConfirm   = { name, lat, lng ->
-                    onLocationSelected(name, lat, lng)
-                    showSheet = false
-                },
-                onDismiss   = { showSheet = false }
+    if (showDialog) {
+        Dialog(
+            onDismissRequest = { /* blocked — only buttons close this */ },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress      = true,
+                dismissOnClickOutside   = false
             )
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                MapLocationPicker(
+                    initialLat  = latitude,
+                    initialLng  = longitude,
+                    initialName = locationName,
+                    onConfirm   = { name, lat, lng ->
+                        onLocationSelected(name, lat, lng)
+                        showDialog = false
+                    },
+                    onDismiss   = { showDialog = false }
+                )
+            }
         }
     }
 }
@@ -141,19 +146,13 @@ private fun MapLocationPicker(
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
 
-    val defaultLatLng = LatLng(52.2297, 21.0122) // Warsaw as default
+    val defaultLatLng = LatLng(52.2297, 21.0122)
     val initialLatLng = if (initialLat != null && initialLng != null)
         LatLng(initialLat, initialLng) else null
 
     var selectedLatLng by remember { mutableStateOf(initialLatLng) }
     var selectedName   by remember { mutableStateOf(initialName) }
     var searchQuery    by remember { mutableStateOf(initialName) }
-
-    val mapScrollConsumer = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource) = available
-        }
-    }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
@@ -162,7 +161,7 @@ private fun MapLocationPicker(
         )
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxSize()) {
 
         // Search bar
         Row(
@@ -201,18 +200,15 @@ private fun MapLocationPicker(
             }
         }
 
-        // Map
+        // Map fills remaining space
         GoogleMap(
-            modifier             = Modifier
+            modifier            = Modifier
                 .fillMaxWidth()
-                .height(360.dp)
-                .nestedScroll(mapScrollConsumer),
-            cameraPositionState  = cameraPositionState,
-            onMapClick           = { latLng ->
+                .weight(1f),
+            cameraPositionState = cameraPositionState,
+            onMapClick          = { latLng ->
                 selectedLatLng = latLng
-                Geocoder(context).getFromLocation(
-                    latLng.latitude, latLng.longitude, 1
-                ) { addresses ->
+                Geocoder(context).getFromLocation(latLng.latitude, latLng.longitude, 1) { addresses ->
                     selectedName = addresses.firstOrNull()
                         ?.getAddressLine(0)
                         ?: "%.5f, %.5f".format(latLng.latitude, latLng.longitude)
@@ -250,7 +246,5 @@ private fun MapLocationPicker(
                 modifier = Modifier.weight(1f)
             ) { Text("Use this location") }
         }
-
-        Spacer(Modifier.height(8.dp))
     }
 }
